@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load scansync humanize %}
+{% block title %}My Classes · {{ student.full_name }}{% endblock %}
+{% block heading %}My Classes{% endblock %}
+{% block crumbs %}<span>{{ student.section }} · {{ student.student_id }}</span>{% endblock %}
+
+{% block content %}
+<div class="page-head" style="margin-bottom:24px">
+  <div>
+    <h2>Enrolled classes &amp; subjects</h2>
+    <p>View your class schedules, rooms, instructors, and personal attendance track record.</p>
+  </div>
+  <div class="row" style="gap:10px">
+    <div class="input-icon" style="width:260px">
+      {% icon "search" 16 %}
+      <input type="search" class="input input--sm" id="class-search-input" placeholder="Search subjects or profs..." autocomplete="off">
+    </div>
+  </div>
+</div>
+
+{% if live_sessions %}
+<!-- Active Live Scan Alert -->
+<section class="card" style="margin-bottom:24px;border:1px solid var(--brand-500);background:linear-gradient(135deg,rgba(91,95,244,.12),rgba(142,81,255,.06));box-shadow:0 8px 24px -6px rgba(91,95,244,.25)">
+  <div class="card__body" style="padding:20px 24px">
+    <div class="row row--wrap row--between" style="gap:16px;align-items:center">
+      <div class="row" style="gap:14px;align-items:center">
+        <span class="badge badge--live" style="font-size:13px;padding:4px 12px;height:30px"><i class="dot"></i> LIVE SESSION OPEN</span>
+        <div>
+          <h3 style="margin:0;font-size:16px">Attendance scan is open right now!</h3>
+          <p class="small muted" style="margin-top:2px">Your instructor has opened attendance check-in. Click below to verify your face.</p>
+        </div>
+      </div>
+      <div class="row row--wrap" style="gap:10px">
+        {% for item in live_sessions %}
+        <a class="btn btn--primary" href="{% url 'attendance:student_scan' item.session.pk %}" id="btn-live-scan-{{ item.cls.pk }}">
+          {% icon "camera" 16 %} Scan in for {{ item.cls.code }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if enrolled_classes %}
+<div class="grid grid--3" id="classes-grid">
+  {% for item in enrolled_classes %}
+  {% with c=item.cls s=item.session r=item.record %}
+  <article class="card card--hover class-card class-card-item" data-search="{{ c.code|lower }} {{ c.name|lower }} {{ c.teacher_name|lower }} {{ c.room|lower }}" style="display:flex;flex-direction:column;justify-content:space-between">
+    <div>
+      <!-- Top row: Subject Code on left, Weekday Chips on right -->
+      <div class="row row--between" style="align-items:center;margin-bottom:8px">
+        <span class="class-card__code" style="font-size:14px;white-space:nowrap">{{ c.code }}</span>
+        {% weekday_chips c.days_list %}
+      </div>
+
+      <!-- Subject Name -->
+      <h3 style="font-size:17px;font-weight:700;line-height:1.3;margin-bottom:8px">{{ c.name }}</h3>
+
+      <!-- Section Badge, Teacher & Room -->
+      <div class="row row--wrap" style="gap:8px;align-items:center;margin-bottom:14px">
+        {% if item.is_individually_added %}
+          <span class="badge badge--brand small" title="Enrolled directly by teacher">Added by Teacher</span>
+        {% else %}
+          <span class="badge badge--info small">Section {{ c.section }}</span>
+        {% endif %}
+        {% if c.teacher %}
+          <span class="small muted" style="display:inline-flex;align-items:center;gap:4px">
+            {% icon "user-check" 13 %} Prof. {{ c.teacher_name }}
+          </span>
+        {% else %}
+          <span class="small muted" style="display:inline-flex;align-items:center;gap:4px">
+            {% icon "user-check" 13 %} No instructor assigned
+          </span>
+        {% endif %}
+        {% if c.room %}
+          <span class="small muted" style="display:inline-flex;align-items:center;gap:4px">
+            {% icon "pin" 13 %} {{ c.room }}
+          </span>
+        {% endif %}
+      </div>
+
+      <!-- 3-box Metrics -->
+      <div class="class-card__rules" style="margin-bottom:14px">
+        <div>
+          <small>Schedule</small>
+          <strong style="white-space:nowrap;display:block">{{ c.start_time|time:"g:i A" }}</strong>
+          {% if c.end_time %}
+            <span class="small muted" style="font-size:11px;display:block;margin-top:2px;white-space:nowrap">to {{ c.end_time|time:"g:i A" }}</span>
+          {% endif %}
+        </div>
+        <div>
+          <small>Grace period</small>
+          <strong style="display:block">{{ c.grace_period_minutes }} min</strong>
+          <span class="small muted" style="font-size:11px;display:block;margin-top:2px">tolerance</span>
+        </div>
+        <div>
+          <small>My Rate</small>
+          <strong style="display:block">{% if item.rate is not None %}{{ item.rate }}%{% else %}100%{% endif %}</strong>
+          <span class="small muted" style="font-size:11px;display:block;margin-top:2px">
+            {% if item.total_sessions %}{{ item.attended }}/{{ item.total_sessions }} attended{% else %}No sessions yet{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card Footer -->
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:auto">
+      {% if item.can_scan %}
+        <a class="btn btn--primary btn--sm btn--block" href="{% url 'attendance:student_scan' s.pk %}" id="btn-enrolled-scan-{{ c.pk }}">
+          {% icon "camera" 14 %} Session is open · Scan in now
+        </a>
+      {% elif r and r.time_in %}
+        <div class="row row--between" style="align-items:center">
+          <span class="small muted" style="display:inline-flex;align-items:center;gap:5px">{% icon "check-circle" 13 %} Checked in today</span>
+          <div class="row" style="gap:6px;align-items:center">
+            {% status_badge r.status r.get_status_display %}
+            <span class="small muted mono">{{ r.time_in|time:"g:i A" }}</span>
+          </div>
+        </div>
+      {% elif s and not s.is_open %}
+        <div class="row row--between" style="align-items:center">
+          <span class="small muted" style="display:inline-flex;align-items:center;gap:5px">{% icon "clock" 13 %} Today's session</span>
+          <span class="badge badge--absent">Session closed</span>
+        </div>
+      {% elif item.meets_today %}
+        <div class="row row--between" style="align-items:center">
+          <span class="small muted" style="display:inline-flex;align-items:center;gap:5px">{% icon "calendar" 13 %} Scheduled today</span>
+          <span class="badge badge--pending">Waiting for teacher</span>
+        </div>
+      {% else %}
+        <div class="row row--between" style="align-items:center">
+          <span class="small muted" style="display:inline-flex;align-items:center;gap:5px">{% icon "calendar" 13 %} Meeting days</span>
+          <span class="badge badge--pending">{% if c.days_list %}{{ c.days_list|join:", "|title }}{% else %}Daily{% endif %}</span>
+        </div>
+      {% endif %}
+    </div>
+  </article>
+  {% endwith %}
+  {% endfor %}
+</div>
+
+<p id="no-filter-match" class="small muted" style="display:none;text-align:center;padding:32px">
+  No enrolled classes match your search query.
+</p>
+
+<script>
+  (function () {
+    const input = document.getElementById('class-search-input');
+    const items = document.querySelectorAll('.class-card-item');
+    const emptyNotice = document.getElementById('no-filter-match');
+
+    if (!input || !items.length) return;
+
+    input.addEventListener('input', function () {
+      const q = (this.value || '').trim().toLowerCase();
+      let visible = 0;
+      items.forEach(function (card) {
+        const text = card.getAttribute('data-search') || '';
+        const match = !q || text.includes(q);
+        card.style.display = match ? 'flex' : 'none';
+        if (match) visible++;
+      });
+      if (emptyNotice) {
+        emptyNotice.style.display = visible === 0 ? 'block' : 'none';
+      }
+    });
+  })();
+</script>
+
+{% else %}
+<div class="card">
+  <div class="empty">
+    <div class="empty__icon">{% icon "book" 28 %}</div>
+    <h3>No enrolled classes yet</h3>
+    <p class="small">You are not currently enrolled in any subjects. Check back once your instructor assigns subjects to Section {{ student.section }}.</p>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

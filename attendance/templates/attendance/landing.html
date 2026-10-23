@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% load static scansync %}
+
+{% block title %}ScanSync · Smart Facial Recognition Attendance System{% endblock %}
+{% block description %}Modern, real-time facial recognition attendance tracker for classrooms and educational institutions. Zero manual roll calls, automatic grace periods, and instant Excel exports.{% endblock %}
+
+{% block body %}
+<div class="landing">
+  <!-- Navigation Bar -->
+  <header class="landing-nav">
+    <a class="brand" href="{% url 'attendance:dashboard' %}">
+      <img class="brand__mark" src="{% static 'img/logo.svg' %}" alt="" width="38" height="38">
+      <div>
+        <div class="brand__name">Scan<span>Sync</span></div>
+        <div class="brand__sub">Face attendance</div>
+      </div>
+    </a>
+
+    <ul class="landing-nav__links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#demo">Live Demo</a></li>
+      <li><a href="#workflow">How It Works</a></li>
+      <li><a href="#portals">Portals</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+
+    <div class="landing-nav__actions">
+      <button class="btn btn--ghost btn--icon btn--sm" type="button" data-theme-toggle title="Toggle theme">
+        <span data-theme-icon="light">{% icon "moon" 15 %}</span>
+        <span data-theme-icon="dark" hidden>{% icon "sun" 15 %}</span>
+      </button>
+
+      {% if user.is_authenticated %}
+        <a class="btn btn--primary" href="{% url 'attendance:dashboard' %}" id="btn-hero-launch">
+          Dashboard {% icon "chevron-right" 15 %}
+        </a>
+      {% else %}
+        <a class="btn btn--ghost" href="{% url 'login' %}" id="btn-nav-login">Sign In</a>
+        <a class="btn btn--primary" href="{% url 'student_signup' %}" id="btn-nav-register">
+          {% icon "user-plus" 15 %} Student Register
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="landing-hero" id="home">
+    <div class="landing-hero__aurora-1"></div>
+    <div class="landing-hero__aurora-2"></div>
+
+    <div class="landing-hero__content">
+      <div class="pill-badge">
+        {% icon "scan-face" 14 %} Next-Gen AI Biometrics for Education
+      </div>
+      <h1>Attendance in a <span class="grad-text">single glance</span>, not a roll call.</h1>
+      <p class="lead">
+        Replace slow, paper-based roll calls with instantaneous facial recognition. ScanSync detects arriving students in milliseconds, automatically tags <em>Present</em> or <em>Late</em> against class schedules, and stops buddy-punching completely.
+      </p>
+
+      <div class="landing-hero__actions">
+        {% if user.is_authenticated %}
+          <a class="btn btn--primary btn--lg" href="{% url 'attendance:dashboard' %}" id="btn-hero-dashboard">
+            {% icon "dashboard" 18 %} Open My Dashboard
+          </a>
+        {% else %}
+          <a class="btn btn--primary btn--lg" href="{% url 'login' %}" id="btn-hero-signin">
+            {% icon "camera" 18 %} Launch Scanner &amp; Sign In
+          </a>
+          <a class="btn btn--soft btn--lg" href="{% url 'student_signup' %}" id="btn-hero-signup">
+            {% icon "user-plus" 18 %} Register Student
+          </a>
+        {% endif %}
+        <a class="btn btn--ghost btn--lg" href="#demo">
+          Live Preview ↓
+        </a>
+      </div>
+
+      <div class="trust-badges">
+        <span>{% icon "shield" 14 %} 100% On-Device WebAssembly</span>
+        <span>{% icon "clock" 14 %} &lt; 400ms Detection</span>
+        <span>{% icon "check-circle" 14 %} Zero Cloud API Fees</span>
+      </div>
+    </div>
+
+    <!-- Interactive Mock Scanner Simulation -->
+    <div class="mock-scanner" id="demo">
+      <div class="mock-scanner__head">
+        <div class="mock-scanner__dots">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="row" style="gap:6px;align-items:center">
+          <span class="live-dot" style="width:7px;height:7px;border-radius:50%;background:var(--present);display:inline-block"></span>
+          <span>Camera Live · 1080p WebCam</span>
+        </div>
+        <span class="badge badge--brand small">Kiosk Mode</span>
+      </div>
+
+      <div class="mock-scanner__screen">
+        <div class="mock-scanner__laser"></div>
+        <div class="mock-scanner__target">
+          <span class="mock-scanner__target-reticle tl"></span>
+          <span class="mock-scanner__target-reticle tr"></span>
+          <span class="mock-scanner__target-reticle bl"></span>
+          <span class="mock-scanner__target-reticle br"></span>
+          <div class="avatar avatar--xl" style="background:var(--grad-brand);box-shadow:0 0 24px rgba(91,95,244,.4)">
+            JA
+          </div>
+        </div>
+
+        <div class="mock-scanner__tag">
+          <div>
+            <strong>Jacob Cyrus Aunzo</strong>
+            <div class="small muted" style="color:rgba(255,255,255,.6);font-size:11px">ID: 2025226531 · BSIS 2-A</div>
+          </div>
+          <span>{% icon "check-circle" 14 %} 99.4% Match · Present</span>
+        </div>
+      </div>
+
+      <div class="mock-scanner__feed">
+        <div class="mock-scanner__row">
+          <div class="mock-scanner__row-user">
+            <span class="mock-scanner__row-avatar">JA</span>
+            <span><strong>Jacob Cyrus Aunzo</strong> · DM 108</span>
+          </div>
+          <span class="badge badge--present small"><i class="dot"></i> 7:31:02 AM · Present</span>
+        </div>
+        <div class="mock-scanner__row">
+          <div class="mock-scanner__row-user">
+            <span class="mock-scanner__row-avatar">HF</span>
+            <span><strong>Hans Reyniel Famoso</strong> · DM 108</span>
+          </div>
+          <span class="badge badge--present small"><i class="dot"></i> 7:32:45 AM · Present</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Metrics Ribbon -->
+  <section class="landing-stats">
+    <div class="landing-stats__inner">
+      <div class="stat-item">
+        <h3>&lt; 400ms</h3>
+        <p>Instant Recognition Latency</p>
+      </div>
+      <div class="stat-item">
+        <h3>99.4%</h3>
+        <p>Biometric Vector Accuracy</p>
+      </div>
+      <div class="stat-item">
+        <h3>100%</h3>
+        <p>Private &amp; On-Premise Storage</p>
+      </div>
+      <div class="stat-item">
+        <h3>0</h3>
+        <p>Proxy Scans &amp; Roll-Call Delay</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features Grid -->
+  <section class="landing-section" id="features">
+    <div class="section-head">
+      <div class="pill-badge">{% icon "shield" 14 %} Engineered for Academic Precision</div>
+      <h2>Everything needed for flawless attendance</h2>
+      <p>Built from the ground up for universities, colleges, and high schools with heavy classroom schedules.</p>
+    </div>
+
+    <div class="feature-grid">
+      <article class="feature-card">
+        <div class="feature-card__icon">{% icon "scan-face" 24 %}</div>
+        <h3>Client-Side Neural Vision</h3>
+        <p>FaceNet ResNet-34 neural descriptors are computed directly in client WebAssembly. Raw video streams never leave your classroom network.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-card__icon">{% icon "clock" 24 %}</div>
+        <h3>Automated Grace Period Rules</h3>
+        <p>Instructors set official start times and grace allowances. Arrivals within tolerance are marked Present; later arrivals are tagged Late automatically.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-card__icon">{% icon "camera" 24 %}</div>
+        <h3>Dual Check-In Modes</h3>
+        <p>Run a dedicated classroom tablet/laptop kiosk at the door, or let students self-verify from their personal Student Portal when class is in session.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-card__icon">{% icon "refresh" 24 %}</div>
+        <h3>4-Angle Enrolment Resilience</h3>
+        <p>Students enrol front, left, right, and upward angles. ScanSync recognises students under varying classroom lighting and camera angles.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-card__icon">{% icon "sheet" 24 %}</div>
+        <h3>Instant Excel &amp; CSV Exports</h3>
+        <p>Generate one-click institutional gradebook spreadsheets organized by section, subject code, timestamp, and percentage metrics.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-card__icon">{% icon "shield" 24 %}</div>
+        <h3>Dual Isolated Sessions</h3>
+        <p>Military-grade session segregation keeps Superadmin credentials isolated from teacher and student web portals, preventing cookie contamination.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Workflow Section -->
+  <section class="landing-section" id="workflow" style="background:var(--surface-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+    <div class="section-head">
+      <div class="pill-badge">{% icon "trending" 14 %} Frictionless Workflow</div>
+      <h2>How ScanSync Works in 3 Steps</h2>
+      <p>From initial onboarding to weekly gradebook export in under one minute.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-card__num">01</div>
+        <h3>30-Second Face Enrollment</h3>
+        <p>Students capture 4 face angles in their student portal. The 128D mathematical descriptors are stored safely in local database storage.</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-card__num">02</div>
+        <h3>Teacher Opens Class Session</h3>
+        <p>With a single click on the Teacher Dashboard, attendance opens for scheduled subjects with active grace rules and absent cutoffs.</p>
+      </div>
+
+      <div class="step-card">
+        <div class="step-card__num">03</div>
+        <h3>Live Scan &amp; Auto Sync</h3>
+        <p>Students look at the camera. Attendance is logged in real time with exact timestamps, audio feedback chime, and immediate analytics.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dual Portals Showcase -->
+  <section class="landing-section" id="portals">
+    <div class="section-head">
+      <div class="pill-badge">{% icon "users" 14 %} Designed for Every Role</div>
+      <h2>Dedicated Experiences for Teachers &amp; Students</h2>
+      <p>Clean, role-tailored dashboards built to provide clarity and ease of use.</p>
+    </div>
+
+    <div class="portal-card">
+      <div>
+        <span class="badge badge--brand" style="margin-bottom:12px">Instructor Experience</span>
+        <h3>Teacher &amp; Faculty Hub</h3>
+        <p>Manage curriculum subjects, set individual grace allowances, open live camera sessions, and view weekly student arrival trends.</p>
+        <ul class="portal-features">
+          <li>{% icon "check-circle" 18 %} Full classroom roster management &amp; student enrollment</li>
+          <li>{% icon "check-circle" 18 %} Live scanner kiosk with real-time audio chimes</li>
+          <li>{% icon "check-circle" 18 %} One-click Excel &amp; CSV attendance exports</li>
+          <li>{% icon "check-circle" 18 %} 7-day attendance trend analytics and late arrival breakdown</li>
+        </ul>
+      </div>
+      <div>
+        <span class="badge badge--present" style="margin-bottom:12px">Student Experience</span>
+        <h3>Student Portal</h3>
+        <p>Students track their enrolled subjects, check live session statuses, view personal attendance rates, and self-scan from their phones or laptops.</p>
+        <ul class="portal-features">
+          <li>{% icon "check-circle" 18 %} Enrolled subjects list with weekly schedule chips</li>
+          <li>{% icon "check-circle" 18 %} Live attendance alert banner when instructor opens check-in</li>
+          <li>{% icon "check-circle" 18 %} Personal attendance rate percentage per subject</li>
+          <li>{% icon "check-circle" 18 %} Complete check-in timestamp history and verification mode</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="landing-section" id="faq">
+    <div class="section-head">
+      <div class="pill-badge">{% icon "info" 14 %} Questions &amp; Answers</div>
+      <h2>Frequently Asked Questions</h2>
+    </div>
+
+    <div class="grid grid--2" style="gap:20px">
+      <div class="card" style="padding:24px">
+        <h4 style="font-size:16px;margin-bottom:8px">Are raw photos stored on external servers?</h4>
+        <p class="small text-2" style="line-height:1.6">No. ScanSync computes mathematical face vectors (128 floating-point numbers) inside your browser. Matching is done against your local database without external third-party cloud AI vendors.</p>
+      </div>
+
+      <div class="card" style="padding:24px">
+        <h4 style="font-size:16px;margin-bottom:8px">What happens if a student arrives after the grace period?</h4>
+        <p class="small text-2" style="line-height:1.6">If a class starts at 8:00 AM with a 15-minute grace tolerance, arrival before 8:15 AM is tagged Present. Arrival after 8:15 AM is automatically recorded as Late with the exact arrival timestamp.</p>
+      </div>
+
+      <div class="card" style="padding:24px">
+        <h4 style="font-size:16px;margin-bottom:8px">Can students scan twice for the same class meeting?</h4>
+        <p class="small text-2" style="line-height:1.6">No. ScanSync has built-in duplicate-scan protection. Once a student is recognized for a session, their record is locked and subsequent scans during that class are safely ignored.</p>
+      </div>
+
+      <div class="card" style="padding:24px">
+        <h4 style="font-size:16px;margin-bottom:8px">Does ScanSync work offline in the local network?</h4>
+        <p class="small text-2" style="line-height:1.6">Yes. The face detection neural model weights and all icons/scripts are cached locally, allowing ScanSync to operate inside local campus LANs without constant internet connection.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Call To Action Card -->
+  <section class="landing-cta">
+    <div class="pill-badge" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)">
+      {% icon "scan-face" 14 %} Start Modernizing Your Classroom
+    </div>
+    <h2>Ready to experience frictionless attendance?</h2>
+    <p>Sign in with your instructor account or register a student profile to experience instant facial check-in.</p>
+
+    <div class="landing-cta__actions">
+      {% if user.is_authenticated %}
+        <a class="btn btn--primary btn--lg" href="{% url 'attendance:dashboard' %}">
+          {% icon "dashboard" 18 %} Go to Dashboard
+        </a>
+      {% else %}
+        <a class="btn btn--primary btn--lg" href="{% url 'login' %}">
+          {% icon "camera" 18 %} Launch Scanner &amp; Sign In
+        </a>
+        <a class="btn btn--soft btn--lg" href="{% url 'student_signup' %}" style="background:#fff;color:var(--brand-700)">
+          {% icon "user-plus" 18 %} Register Student Account
+        </a>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-foot">
+    <div class="landing-foot__inner">
+      <div class="row" style="gap:12px;align-items:center">
+        <img src="{% static 'img/logo.svg' %}" alt="ScanSync" width="30" height="30">
+        <div>
+          <strong style="font-size:15px">ScanSync</strong>
+          <span class="small muted" style="margin-left:8px">· Face Attendance Platform</span>
+        </div>
+      </div>
+
+      <div class="row" style="gap:20px;font-size:13px;color:var(--text-2)">
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--present);display:inline-block"></span>
+          Operational &amp; Local
+        </span>
+        <a href="{% url 'login' %}" style="color:var(--text-2);text-decoration:none">Sign In</a>
+        <a href="{% url 'student_signup' %}" style="color:var(--text-2);text-decoration:none">Student Register</a>
+        <a href="/admin/" style="color:var(--text-2);text-decoration:none">Admin Portal</a>
+      </div>
+
+      <div class="small muted">
+        Built for classrooms · Bago City, Negros Occidental
+      </div>
+    </div>
+  </footer>
+</div>
+{% endblock %}

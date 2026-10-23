@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load scansync %}
+{% block title %}Students{% endblock %}
+{% block heading %}Students{% endblock %}
+{% block crumbs %}<span>{{ page.paginator.count }} student{{ page.paginator.count|pluralize }}</span>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <form class="row row--wrap" method="get" data-autosubmit role="search" style="flex:1">
+    <div class="input-icon" style="flex:1;min-width:220px;max-width:360px">
+      {% icon "search" 16 %}
+      <input class="input" type="search" name="q" value="{{ q }}" placeholder="Search name or student ID" aria-label="Search students" id="student-search">
+    </div>
+    <select class="select" name="section" style="width:auto;min-width:170px" aria-label="Section" id="student-section-filter">
+      <option value="">All sections</option>
+      {% for s in sections %}<option value="{{ s.pk }}" {% if section == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }} ({{ s.n }})</option>{% endfor %}
+    </select>
+    <div class="segmented" role="tablist">
+      <a class="{% if show == 'active' %}is-active{% endif %}" href="?show=active&q={{ q|urlencode }}&section={{ section }}">Active</a>
+      <a class="{% if show == 'archived' %}is-active{% endif %}" href="?show=archived&q={{ q|urlencode }}&section={{ section }}">Archived</a>
+      <a class="{% if show == 'all' %}is-active{% endif %}" href="?show=all&q={{ q|urlencode }}&section={{ section }}">All</a>
+    </div>
+    <input type="hidden" name="show" value="{{ show }}">
+  </form>
+  <div class="row">
+    <button class="btn" type="button" data-open-dialog="#section-dialog" id="btn-new-section">{% icon "plus" 16 %} Section</button>
+    <a class="btn btn--primary" href="{% url 'attendance:student_register' %}{% if section %}?section={{ section }}{% endif %}" id="btn-register-student">{% icon "user-plus" 16 %} Register student</a>
+  </div>
+</div>
+
+{% if page.object_list %}
+<div class="student-grid">
+  {% for s in page.object_list %}
+  <a class="card card--hover student-card" href="{{ s.get_absolute_url }}" {% if not s.is_active %}style="opacity:.6"{% endif %}>
+    <span class="avatar">{% if s.photo %}<img src="{{ s.photo.url }}" alt="" loading="lazy">{% else %}{{ s.initials }}{% endif %}</span>
+    <div>
+      <div class="person__name">{{ s.full_name }}</div>
+      <div class="student-card__id">{{ s.student_id }}</div>
+    </div>
+    <div class="student-card__foot">
+      <span class="badge badge--brand">{{ s.section }}</span>
+      {% if s.samples >= SCANSYNC.MIN_FACE_SAMPLES %}<span class="badge badge--present">{% icon "scan-face" 12 %} {{ s.samples }} faces</span>
+      {% elif s.samples %}<span class="badge badge--late">{% icon "alert" 12 %} {{ s.samples }} face{{ s.samples|pluralize }}</span>
+      {% else %}<span class="badge badge--absent">No face data</span>{% endif %}
+      {% if s.user %}<span class="badge badge--soft" title="Portal account: @{{ s.user.username }}">{% icon "user-check" 12 %} Account</span>{% endif %}
+      {% if not s.is_active %}<span class="badge">Archived</span>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% if page.has_other_pages %}
+<div class="card" style="margin-top:20px">
+  <div class="pagination" style="border-top:0">
+    <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    <div class="row">
+      {% if page.has_previous %}<a class="btn btn--sm" href="?page={{ page.previous_page_number }}&q={{ q|urlencode }}&section={{ section }}&show={{ show }}">Previous</a>{% endif %}
+      {% if page.has_next %}<a class="btn btn--sm" href="?page={{ page.next_page_number }}&q={{ q|urlencode }}&section={{ section }}&show={{ show }}">Next</a>{% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% else %}
+<div class="card">
+  <div class="empty">
+    <div class="empty__icon">{% icon "users" 28 %}</div>
+    {% if q or section or show != "active" %}
+      <h3>No students match these filters</h3>
+      <a class="btn" href="{% url 'attendance:student_list' %}">Clear filters</a>
+    {% elif not sections %}
+      <h3>Start by creating a section</h3>
+      <p>Students belong to a section (e.g. BSIS 2-A), and classes are scheduled per section.</p>
+      <button class="btn btn--primary" type="button" data-open-dialog="#section-dialog">{% icon "plus" 16 %} New section</button>
+    {% else %}
+      <h3>No students registered yet</h3>
+      <p>Register each student with a few webcam face samples so the scanner can recognise them.</p>
+      <a class="btn btn--primary" href="{% url 'attendance:student_register' %}">{% icon "user-plus" 16 %} Register first student</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% include "attendance/_section_dialog.html" %}
+{% endblock %}

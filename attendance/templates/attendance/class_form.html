@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% load scansync %}
+{% block title %}{% if instance %}Edit {{ instance.code }}{% else %}New class{% endif %}{% endblock %}
+{% block heading %}{% if instance %}Edit class{% else %}New class{% endif %}{% endblock %}
+{% block crumbs %}<a href="{% url 'attendance:class_list' %}">Classes</a>{% icon "chevron-right" 12 %}<span>{% if instance %}{{ instance.label }}{% else %}New{% endif %}</span>{% endblock %}
+
+{% block content %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert--error" style="margin-bottom:20px">{% icon "x-circle" %}<span>{{ form.non_field_errors|join:" " }}</span></div>{% endif %}
+  <div class="grid grid--main-side">
+    <div class="stack" style="gap:20px">
+      <section class="card">
+        <div class="card__head"><div><h2>Subject</h2><p>What is being taught, to whom, and where</p></div><span class="chip-icon">{% icon "book" %}</span></div>
+        <div class="card__body form-grid">
+          {% include "attendance/_field.html" with field=form.code %}
+          {% include "attendance/_field.html" with field=form.name %}
+          {% include "attendance/_field.html" with field=form.section %}
+          {% include "attendance/_field.html" with field=form.teacher %}
+          {% include "attendance/_field.html" with field=form.room %}
+          {% include "attendance/_field.html" with field=form.is_active %}
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card__head"><div><h2>Schedule</h2><p>Classes meeting today appear first on the dashboard and scanner</p></div><span class="chip-icon">{% icon "calendar" %}</span></div>
+        <div class="card__body stack">
+          <div class="field {% if form.meeting_days.errors %}has-error{% endif %}">
+            <span class="label">Meeting days</span>
+            <div class="day-picker">{{ form.meeting_days }}</div>
+            <span class="help">{{ form.meeting_days.help_text }}</span>
+            {{ form.meeting_days.errors }}
+          </div>
+          <div class="form-grid">
+            {% include "attendance/_field.html" with field=form.start_time %}
+            {% include "attendance/_field.html" with field=form.end_time %}
+          </div>
+        </div>
+      </section>
+
+      {% if instance %}
+      <section class="card">
+        <div class="card__head">
+          <div>
+            <h2>Class Roster &amp; Students</h2>
+            <p>{{ roster|length }} student{{ roster|length|pluralize }} enrolled in this class</p>
+          </div>
+          <span class="chip-icon">{% icon "users" %}</span>
+        </div>
+        <div class="card__body stack" style="gap:16px">
+          {% if other_students %}
+          <div class="alert alert--info" style="display:block">
+            <strong style="display:block;margin-bottom:8px">Enroll additional student into {{ instance.code }}:</strong>
+            <form method="post" action="{% url 'attendance:class_enroll_students' %}" class="row" style="gap:8px">
+              {% csrf_token %}
+              <input type="hidden" name="school_class" value="{{ instance.pk }}">
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <select name="student_id" class="select select--sm grow" required style="min-width:200px">
+                <option value="" disabled selected>-- Select a student to add --</option>
+                {% for os in other_students %}
+                  <option value="{{ os.pk }}">{{ os.full_name }} ({{ os.student_id }} · {{ os.section }})</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn--primary btn--sm" type="submit" id="btn-add-roster-student">
+                {% icon "plus" 14 %} Add to Class
+              </button>
+            </form>
+          </div>
+          {% endif %}
+
+          {% if roster %}
+          <div class="table-wrap">
+            <table class="table" style="font-size:13px">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>ID</th>
+                  <th>Section</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in roster %}
+                <tr>
+                  <td>
+                    <a href="{{ s.get_absolute_url }}" style="font-weight:600">
+                      {{ s.full_name }}
+                    </a>
+                  </td>
+                  <td class="mono small">{{ s.student_id }}</td>
+                  <td><span class="badge">{{ s.section }}</span></td>
+                  <td>
+                    {% if s.pk in enrolled_pks %}
+                      <span class="badge badge--brand">Added to Class</span>
+                    {% else %}
+                      <span class="badge badge--soft">Section Default</span>
+                    {% endif %}
+                  </td>
+                  <td style="text-align:right">
+                    {% if s.pk in enrolled_pks %}
+                    <form method="post" action="{% url 'attendance:class_unenroll_student' instance.pk s.pk %}" style="display:inline" data-confirm="Remove {{ s.full_name }} from this class?">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button class="btn btn--ghost btn--icon btn--sm" type="submit" title="Remove student from class">{% icon "trash" 13 %}</button>
+                    </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="small muted">No students are currently in this class roster.</p>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+    </div>
+
+    <aside class="stack" style="gap:20px">
+      <section class="card">
+        <div class="card__head"><div><h2>Status rules</h2><p>How each scan is tagged</p></div><span class="chip-icon chip-icon--late">{% icon "clock" %}</span></div>
+        <div class="card__body stack">
+          {% include "attendance/_field.html" with field=form.grace_period_minutes %}
+          {% include "attendance/_field.html" with field=form.absent_after_minutes %}
+          <div>
+            <span class="label">Preview</span>
+            <div class="timeline-rule" aria-hidden="true">
+              <span style="background:var(--present)"></span><span style="background:var(--late)"></span><span style="background:var(--absent)" id="rule-absent-bar"></span>
+            </div>
+            <ul class="tips" style="margin-top:12px" id="rule-preview">
+              <li><span class="badge badge--present"><i class="dot"></i>Present</span><span>arrives by <strong data-rule="grace">—</strong></span></li>
+              <li><span class="badge badge--late"><i class="dot"></i>Late</span><span data-rule="late">after that</span></li>
+              <li><span class="badge badge--absent"><i class="dot"></i>Absent</span><span data-rule="absent">never scans before the session is closed</span></li>
+            </ul>
+          </div>
+          <p class="help">Changing rules never rewrites past sessions — each session snapshots the rules in force when it was opened.</p>
+        </div>
+        <div class="card__foot">
+          <a class="btn btn--ghost" href="{% url 'attendance:class_list' %}">Cancel</a>
+          <button class="btn btn--primary" type="submit" id="btn-save-class">{% icon "check" 16 %} Save class</button>
+        </div>
+      </section>
+
+      {% if instance %}
+      <section class="card">
+        <div class="card__head"><div><h2>Danger zone</h2></div></div>
+        <div class="card__body">
+          <p class="small text-2" style="margin-bottom:12px">Deleting a class also deletes all of its attendance sessions and records.</p>
+          <button class="btn btn--danger-ghost" type="submit" form="delete-class-form" id="btn-delete-class">{% icon "trash" 16 %} Delete class</button>
+        </div>
+      </section>
+      {% endif %}
+    </aside>
+  </div>
+</form>
+
+{% if instance %}
+<form id="delete-class-form" method="post" action="{% url 'attendance:class_delete' instance.pk %}" data-confirm="Delete {{ instance.label }} and ALL its attendance records? This cannot be undone.">{% csrf_token %}</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Live preview of the Present / Late / Absent windows.
+  (() => {
+    const $ = (s) => document.querySelector(s);
+    const start = $("#id_start_time"), grace = $("#id_grace_period_minutes"), absent = $("#id_absent_after_minutes");
+    const fmt = (mins) => {
+      const d = new Date(2000, 0, 1, 0, mins);
+      return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    };
+    function update() {
+      const [h, m] = (start.value || "").split(":").map(Number);
+      const base = Number.isFinite(h) ? h * 60 + m : null;
+      const g = parseInt(grace.value, 10) || 0;
+      const a = absent.value === "" ? null : parseInt(absent.value, 10);
+      $('[data-rule="grace"]').textContent = base == null ? `start + ${g} min` : fmt(base + g);
+      $('[data-rule="late"]').textContent = a == null ? "any time after that" : `until ${base == null ? `start + ${a} min` : fmt(base + a)}`;
+      $('[data-rule="absent"]').textContent = a == null ? "never scans before the session is closed"
+        : `scans after ${base == null ? `start + ${a} min` : fmt(base + a)}, or never scans`;
+    }
+    [start, grace, absent].forEach((el) => el && el.addEventListener("input", update));
+    update();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static scansync %}
+{% block title %}Sign In · ScanSync{% endblock %}
+{% block description %}Sign in to ScanSync to run live face-recognition attendance for your classes.{% endblock %}
+
+{% block body %}
+<div class="auth">
+  <section class="auth__art" aria-hidden="false">
+    <div class="row row--between" style="align-items:center">
+      <a class="brand" href="{% url 'attendance:landing' %}">
+        <img class="brand__mark" src="{% static 'img/logo.svg' %}" alt="" width="38" height="38">
+        <div>
+          <div class="brand__name">Scan<span>Sync</span></div>
+          <div class="brand__sub" style="color:rgba(255,255,255,.7)">Face attendance</div>
+        </div>
+      </a>
+      <a class="btn btn--ghost btn--sm" href="{% url 'attendance:landing' %}" style="color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2)">
+        {% icon "arrow-left" 14 %} Explore Website
+      </a>
+    </div>
+
+    <div style="margin:40px 0">
+      <div class="pill-badge" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25);box-shadow:none">
+        {% icon "scan-face" 14 %} AI Facial Recognition Suite
+      </div>
+      <h2>Attendance in a <span>glance</span>, not a roll call.</h2>
+      <p>Students look at the camera, ScanSync recognises them in milliseconds, and tags each arrival Present, Late or Absent against class schedules — automatically.</p>
+
+      <div class="auth__features">
+        <span class="glass">{% icon "scan-face" 15 %} Real-time recognition</span>
+        <span class="glass">{% icon "clock" 15 %} Auto status tagging</span>
+        <span class="glass">{% icon "shield" 15 %} Duplicate-scan safe</span>
+        <span class="glass">{% icon "sheet" 15 %} Excel &amp; CSV export</span>
+      </div>
+    </div>
+
+    <div class="row row--between" style="font-size:12.5px;color:rgba(255,255,255,.6);align-items:center">
+      <span>Built for classrooms · Bago City, Negros Occidental</span>
+      <span style="display:inline-flex;align-items:center;gap:6px">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--present);display:inline-block"></span> Local AI Ready
+      </span>
+    </div>
+  </section>
+
+  <section class="auth__form">
+    <div class="auth__box">
+      <div style="margin-bottom:20px">
+        <a href="{% url 'attendance:landing' %}" class="small muted" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">
+          {% icon "arrow-left" 14 %} Back to Home
+        </a>
+      </div>
+
+      <h1>Welcome back</h1>
+      <p class="lead">Sign in with your teacher or administrator account to access class sessions.</p>
+
+      {% if form.non_field_errors %}
+      <div class="alert alert--error" style="margin-bottom:18px">{% icon "x-circle" %}<span>{{ form.non_field_errors|join:" " }}</span></div>
+      {% endif %}
+
+      <form method="post" class="stack" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <div class="field {% if form.username.errors %}has-error{% endif %}">
+          <label for="id_username">Username</label>
+          <input class="input" type="text" name="username" id="id_username" autocomplete="username" autofocus required value="{{ form.username.value|default:'' }}" placeholder="e.g. admin or teacher">
+          {{ form.username.errors }}
+        </div>
+        <div class="field {% if form.password.errors %}has-error{% endif %}">
+          <label for="id_password">Password</label>
+          <input class="input" type="password" name="password" id="id_password" autocomplete="current-password" required placeholder="••••••••">
+          {{ form.password.errors }}
+        </div>
+        <button class="btn btn--primary btn--lg btn--block" id="login-submit" type="submit">
+          Sign In {% icon "chevron-right" 18 %}
+        </button>
+      </form>
+
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);text-align:center">
+        <p class="small text-2" style="margin-bottom:10px">Are you a student enrolling or checking in?</p>
+        <a class="btn btn--soft btn--block" id="btn-student-register" href="{% url 'student_signup' %}">
+          {% icon "user-plus" 16 %} Register Student Account
+        </a>
+      </div>
+
+      <p class="auth__foot">
+        Teachers &amp; staff: ask your administrator if you need access.
+      </p>
+
+      <div class="row" style="justify-content:center;margin-top:18px">
+        <button class="btn btn--ghost btn--sm" type="button" data-theme-toggle id="login-theme-toggle">
+          <span data-theme-icon="light">{% icon "moon" 14 %}</span><span data-theme-icon="dark" hidden>{% icon "sun" 14 %}</span> Theme
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

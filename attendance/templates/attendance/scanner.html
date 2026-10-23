@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static scansync %}
+{% block title %}Scanning · {{ session.school_class.label }}{% endblock %}
+{% block heading %}{{ session.school_class.code }} · {{ session.school_class.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'attendance:scanner_select' %}">Live scanner</a>{% icon "chevron-right" 12 %}<span>{{ session.school_class.section }} · {{ session.date|date:"D, M j" }}</span>{% endblock %}
+{% block topbar_actions %}
+  {% if session.is_open %}<span class="badge badge--live" id="session-live-badge"><i class="dot"></i>Live session</span>
+  {% else %}<span class="badge">Closed</span>{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="scanner" id="scanner">
+  <div class="stack">
+    <div class="stage" id="stage" data-state="loading">
+      <video id="scanner-video" autoplay muted playsinline></video>
+      <canvas class="overlay" id="scanner-overlay"></canvas>
+      <div class="stage__vignette"></div>
+      <div class="flash" id="scanner-flash"></div>
+      <div class="stage__frame"><i></i><i></i><i></i><i></i><div class="stage__scanline"></div></div>
+
+      <div class="stage__hud">
+        <span class="glass hud-pill" id="hud-status" data-tone=""><i class="dot"></i><span>Starting…</span></span>
+        <div class="hud-tools">
+          <button class="btn btn--icon btn--sm" type="button" id="btn-sound" title="Toggle sound" aria-label="Toggle sound">
+            <span data-on>{% icon "volume" 16 %}</span><span data-off hidden>{% icon "volume-x" 16 %}</span>
+          </button>
+          <button class="btn btn--icon btn--sm" type="button" id="btn-pause" title="Pause scanning" aria-label="Pause scanning">
+            <span data-on>{% icon "pause" 16 %}</span><span data-off hidden>{% icon "play" 16 %}</span>
+          </button>
+          <button class="btn btn--icon btn--sm" type="button" id="btn-fullscreen" title="Full screen kiosk mode" aria-label="Full screen">{% icon "maximize" 16 %}</button>
+        </div>
+      </div>
+
+      <div class="stage__loader" id="stage-loader">
+        <div>
+          <div class="spinner" id="loader-spinner"></div>
+          <h3 id="loader-title">Preparing face recognition</h3>
+          <p id="loader-text">Loading models…</p>
+          <div class="loader-bar"><span id="loader-bar"></span></div>
+          <button class="btn btn--sm hidden" type="button" id="loader-retry" style="margin-top:18px">{% icon "refresh" 14 %} Try again</button>
+        </div>
+      </div>
+
+      <div class="result" id="result" aria-live="assertive">
+        <span class="avatar" id="result-avatar"></span>
+        <div style="min-width:0">
+          <div class="result__name" id="result-name"></div>
+          <div class="result__meta" id="result-meta"></div>
+          <div class="result__msg" id="result-msg"></div>
+        </div>
+        <div class="result__time"><strong id="result-time"></strong><span class="badge" id="result-badge"></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__body row row--between row--wrap" style="padding:14px 18px">
+        <div class="row row--wrap" style="gap:10px">
+          <label class="sr-only" for="camera-select">Camera</label>
+          <div class="input-icon" style="min-width:240px">
+            {% icon "camera" 16 %}
+            <select class="select input" id="camera-select" style="padding-left:40px"><option value="">Default camera</option></select>
+          </div>
+          <span class="small muted">Match threshold <code>{{ match_threshold }}</code> · one scan per student per session</span>
+        </div>
+        <div class="row">
+          <a class="btn btn--ghost" href="{% url 'attendance:session_detail' session.pk %}" id="btn-view-roster">{% icon "users" 16 %} Roster</a>
+          {% if session.is_open %}
+          <form method="post" action="{% url 'attendance:session_close' session.pk %}" data-confirm="Close this session? Students who haven't scanned will be marked Absent.">
+            {% csrf_token %}
+            <button class="btn btn--danger" type="submit" id="btn-close-session">{% icon "stop" 16 %} End session</button>
+          </form>
+          {% else %}
+          <form method="post" action="{% url 'attendance:session_reopen' session.pk %}">
+            {% csrf_token %}
+            <button class="btn btn--soft" type="submit" id="btn-reopen-session">{% icon "refresh" 16 %} Re-open</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="side-panel">
+    <section class="card session-card">
+      <div class="row row--between">
+        <span class="class-card__code">{{ session.school_class.section }}</span>
+        <span class="small muted">{% icon "calendar" 13 %} {{ session.date|date:"M j, Y" }}</span>
+      </div>
+      <div class="row" style="margin-top:16px;gap:18px">
+        <div class="ring" id="rate-ring" style="--p:{{ snapshot.counts.rate }}"><span id="rate-value">{{ snapshot.counts.rate }}%<small>ARRIVED</small></span></div>
+        <div class="stack stack--sm small text-2">
+          <div>{% icon "clock" 14 %} Starts <strong>{{ session.start_time|time:"g:i A" }}</strong></div>
+          <div>{% icon "check-circle" 14 %} Present until <strong>{{ session.grace_deadline|time:"g:i A" }}</strong></div>
+          <div>{% icon "x-circle" 14 %} Absent after <strong>{% if session.absent_deadline %}{{ session.absent_deadline|time:"g:i A" }}{% else %}end of session{% endif %}</strong></div>
+        </div>
+      </div>
+      <div class="countdown" id="countdown" data-phase="present">
+        {% icon "clock" 22 %}
+        <div><div class="small" id="countdown-label">Present window closes in</div><strong id="countdown-value">--:--</strong></div>
+      </div>
+    </section>
+
+    <section class="stat-grid" aria-label="Session counters">
+      <div class="stat"><div class="stat__label"><i style="background:var(--present)"></i>Present</div><div class="stat__value" data-count="present">{{ snapshot.counts.present }}</div></div>
+      <div class="stat"><div class="stat__label"><i style="background:var(--late)"></i>Late</div><div class="stat__value" data-count="late">{{ snapshot.counts.late }}</div></div>
+      <div class="stat"><div class="stat__label"><i style="background:var(--absent)"></i>Absent</div><div class="stat__value" data-count="absent">{{ snapshot.counts.absent }}</div></div>
+      <div class="stat"><div class="stat__label"><i style="background:var(--muted)"></i>Not yet in</div><div class="stat__value" data-count="remaining">{{ snapshot.counts.remaining }}</div></div>
+    </section>
+
+    <section class="card">
+      <div class="card__head"><div><h2>Check-ins</h2><p><span data-count="roster">{{ snapshot.counts.roster }}</span> on the roster</p></div></div>
+      <ul class="feed live-feed" id="live-feed"></ul>
+      <div class="empty" id="feed-empty" {% if snapshot.recent %}hidden{% endif %}>
+        <div class="empty__icon">{% icon "scan-face" 28 %}</div>
+        <h3>Waiting for the first scan</h3>
+        <p class="small">Ask students to look straight at the camera one at a time.</p>
+      </div>
+    </section>
+  </aside>
+</div>
+
+{{ scanner_config|json_script:"scanner-config" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ SCANSYNC.FACE_API_JS }}" defer></script>
+<script src="{% static 'js/face-engine.js' %}" defer></script>
+<script src="{% static 'js/scanner.js' %}" defer></script>
+{% endblock %}

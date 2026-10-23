@@ -1,0 +1,1 @@
+"""ScanSync template tags."""

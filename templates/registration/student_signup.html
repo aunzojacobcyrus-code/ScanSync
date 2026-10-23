@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load static scansync %}
+{% block title %}Student Registration · ScanSync{% endblock %}
+{% block description %}Create your ScanSync student account to scan for your classes and view your attendance records.{% endblock %}
+
+{% block body %}
+<div class="auth">
+  <section class="auth__art" aria-hidden="false">
+    <a class="brand" href="{% url 'login' %}">
+      <img class="brand__mark" src="{% static 'img/logo.svg' %}" alt="" width="38" height="38">
+      <div>
+        <div class="brand__name">Scan<span>Sync</span></div>
+        <div class="brand__sub" style="color:rgba(255,255,255,.7)">Student Portal</div>
+      </div>
+    </a>
+    <div>
+      <h2>Step in, scan your face, <span>you're counted</span>.</h2>
+      <p>Register your student portal account today to check into class sessions with your face and track your attendance record in real time.</p>
+      <div class="auth__features">
+        <span class="glass">{% icon "scan-face" 16 %} Self-scan with your face</span>
+        <span class="glass">{% icon "clock" 16 %} Real-time arrival records</span>
+        <span class="glass">{% icon "trending" 16 %} Personal attendance analytics</span>
+        <span class="glass">{% icon "shield" 16 %} Secure biometric profile</span>
+      </div>
+    </div>
+    <p class="small" style="color:rgba(255,255,255,.55)">ScanSync Classroom Attendance · Built with privacy by design</p>
+  </section>
+
+  <section class="auth__form">
+    <div class="auth__box" style="max-width:560px">
+      <div class="row row--between" style="align-items:center;margin-bottom:8px">
+        <span class="badge badge--present">{% icon "user-plus" 14 %} Student Registration</span>
+        <a class="btn btn--ghost btn--sm" href="{% url 'login' %}">{% icon "chevron-left" 14 %} Back to sign in</a>
+      </div>
+      <h1 style="font-size:26px;margin-bottom:4px">Create student account</h1>
+      <p class="lead" style="margin-bottom:20px">Enter your official student information to register your portal access.</p>
+
+      {% if form.non_field_errors %}
+      <div class="alert alert--error" style="margin-bottom:18px">{% icon "x-circle" %}<span>{{ form.non_field_errors|join:" " }}</span></div>
+      {% endif %}
+
+      <form method="post" class="stack" novalidate id="student-signup-form">
+        {% csrf_token %}
+
+        <div class="field {% if form.student_id.errors %}has-error{% endif %}">
+          <label for="id_student_id">Official Student ID <span class="req">*</span></label>
+          {{ form.student_id }}
+          {% if form.student_id.help_text %}<span class="small muted">{{ form.student_id.help_text }}</span>{% endif %}
+          {{ form.student_id.errors }}
+        </div>
+
+        <div class="form-grid">
+          <div class="field {% if form.first_name.errors %}has-error{% endif %}">
+            <label for="id_first_name">First Name <span class="req">*</span></label>
+            {{ form.first_name }}
+            {{ form.first_name.errors }}
+          </div>
+
+          <div class="field {% if form.last_name.errors %}has-error{% endif %}">
+            <label for="id_last_name">Last Name <span class="req">*</span></label>
+            {{ form.last_name }}
+            {{ form.last_name.errors }}
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field {% if form.middle_name.errors %}has-error{% endif %}">
+            <label for="id_middle_name">Middle Name <span class="small muted">(Optional)</span></label>
+            {{ form.middle_name }}
+            {{ form.middle_name.errors }}
+          </div>
+
+          <div class="field {% if form.section.errors %}has-error{% endif %}">
+            <label for="id_section">Section / Class Block <span class="req">*</span></label>
+            {{ form.section }}
+            {{ form.section.errors }}
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field {% if form.email.errors %}has-error{% endif %}">
+            <label for="id_email">Email Address <span class="small muted">(Optional)</span></label>
+            {{ form.email }}
+            {{ form.email.errors }}
+          </div>
+
+          <div class="field {% if form.username.errors %}has-error{% endif %}">
+            <label for="id_username">Portal Username <span class="req">*</span></label>
+            {{ form.username }}
+            {% if form.username.help_text %}<span class="small muted">{{ form.username.help_text }}</span>{% endif %}
+            {{ form.username.errors }}
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field {% if form.password.errors %}has-error{% endif %}">
+            <label for="id_password">Password <span class="req">*</span></label>
+            {{ form.password }}
+            {{ form.password.errors }}
+          </div>
+
+          <div class="field {% if form.password_confirm.errors %}has-error{% endif %}">
+            <label for="id_password_confirm">Confirm Password <span class="req">*</span></label>
+            {{ form.password_confirm }}
+            {{ form.password_confirm.errors }}
+          </div>
+        </div>
+
+        <div class="alert alert--info" style="font-size:13px;line-height:1.5">
+          {% icon "scan-face" 16 %}
+          <div>
+            <strong>Next step:</strong> After registering your account, you will enrol your 4 face poses (front, slightly left, slightly right, and front) so you can scan into your classes.
+          </div>
+        </div>
+
+        <button class="btn btn--primary btn--lg btn--block" id="signup-submit" type="submit" style="margin-top:4px">
+          Create account &amp; proceed to face setup {% icon "chevron-right" 18 %}
+        </button>
+      </form>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-subtle);text-align:center">
+        <p class="small text-2">
+          Already registered? <a href="{% url 'login' %}" style="font-weight:600;color:var(--brand-600)">Sign in to your account</a>
+        </p>
+      </div>
+
+      <div class="row" style="justify-content:center;margin-top:16px">
+        <button class="btn btn--ghost btn--sm" type="button" data-theme-toggle id="signup-theme-toggle">
+          <span data-theme-icon="light">{% icon "moon" 14 %}</span><span data-theme-icon="dark" hidden>{% icon "sun" 14 %}</span> Theme
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  // Helpful auto-fill: when student ID is typed, suggest it as username if empty
+  const idInput = document.getElementById("id_student_id");
+  const userInput = document.getElementById("id_username");
+  if (idInput && userInput) {
+    idInput.addEventListener("blur", () => {
+      if (!userInput.value.trim() && idInput.value.trim()) {
+        userInput.value = idInput.value.trim().toLowerCase();
+      }
+    });
+  }
+</script>
+{% endblock %}

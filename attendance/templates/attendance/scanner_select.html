@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load scansync %}
+{% block title %}Live scanner{% endblock %}
+{% block heading %}Live scanner{% endblock %}
+{% block crumbs %}<a href="{% url 'attendance:dashboard' %}">Dashboard</a>{% icon "chevron-right" 12 %}<span>Choose a class</span>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Which class are you taking attendance for?</h2>
+    <p>Starting a session snapshots the class's start time and grace period. Classes meeting today are listed first.</p>
+  </div>
+  <a class="btn" href="{% url 'attendance:class_create' %}" id="select-new-class">{% icon "plus" %} New class</a>
+</div>
+
+{% if items %}
+<div class="grid grid--3">
+  {% for item in items %}
+  {% with c=item.cls s=item.session %}
+  <article class="card card--hover class-card">
+    <div class="row row--between">
+      <span class="class-card__code">{{ c.code }}</span>
+      {% if s and s.is_open %}<span class="badge badge--live"><i class="dot"></i>Live</span>
+      {% elif s %}<span class="badge badge--present">{% icon "check" 12 %} Done today</span>
+      {% elif item.today %}<span class="badge badge--brand">Today</span>
+      {% else %}<span class="badge">Not scheduled today</span>{% endif %}
+    </div>
+    <div>
+      <h3 style="font-size:17px">{{ c.name }}</h3>
+      <p class="small muted" style="margin-top:4px">{% icon "users" 13 %} {{ c.section }} · {{ c.roster_count }} student{{ c.roster_count|pluralize }}{% if c.room %} · {% icon "pin" 13 %} {{ c.room }}{% endif %}</p>
+    </div>
+    <div class="class-card__rules">
+      <div><small>Starts</small><strong>{{ c.start_time|time:"g:i A" }}</strong></div>
+      <div><small>Grace</small><strong>{{ c.grace_period_minutes }} min</strong></div>
+      <div><small>Absent after</small><strong>{% if c.absent_after_minutes is not None %}{{ c.absent_after_minutes }} min{% else %}—{% endif %}</strong></div>
+    </div>
+    {% weekday_chips c.days_list %}
+    {% if s and s.is_open %}
+      <a class="btn btn--primary btn--block" href="{% url 'attendance:scanner' s.pk %}" id="resume-{{ c.pk }}">{% icon "camera" %} Resume scanning</a>
+    {% else %}
+      <form method="post" action="{% url 'attendance:session_start' %}" {% if s %}data-confirm="Today's session for {{ c.label }} is closed. Re-open it for late arrivals?"{% endif %}>
+        {% csrf_token %}
+        <input type="hidden" name="school_class" value="{{ c.pk }}">
+        <button class="btn btn--block {% if item.today and not s %}btn--primary{% else %}btn--soft{% endif %}" type="submit" id="start-{{ c.pk }}" {% if not c.roster_count %}title="No students in {{ c.section }} yet"{% endif %}>
+          {% if s %}{% icon "refresh" %} Re-open session{% else %}{% icon "play" %} Start session{% endif %}
+        </button>
+      </form>
+      {% if s %}<a class="btn btn--ghost btn--sm btn--block" href="{% url 'attendance:session_detail' s.pk %}">View today's attendance</a>{% endif %}
+    {% endif %}
+  </article>
+  {% endwith %}
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty">
+    <div class="empty__icon">{% icon "book" 28 %}</div>
+    <h3>No active classes yet</h3>
+    <p>Create a class (subject + section + start time) before you can start scanning.</p>
+    <a class="btn btn--primary" href="{% url 'attendance:class_create' %}">{% icon "plus" %} Create your first class</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

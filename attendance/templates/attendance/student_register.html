@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load static scansync %}
+{% block title %}{% if mode == "reenroll" %}Re-enrol face · {{ student.full_name }}{% else %}Register student{% endif %}{% endblock %}
+{% block heading %}{% if mode == "reenroll" %}Re-enrol face{% else %}Register student{% endif %}{% endblock %}
+{% block crumbs %}
+  {% if is_student %}
+    <a href="{% url 'attendance:dashboard' %}">Student Portal</a>{% icon "chevron-right" 12 %}<span>Face Profile</span>
+  {% else %}
+    <a href="{% url 'attendance:student_list' %}">Students</a>{% icon "chevron-right" 12 %}{% if student %}<a href="{{ student.get_absolute_url }}">{{ student.full_name }}</a>{% icon "chevron-right" 12 %}<span>Face samples</span>{% else %}<span>New</span>{% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="grid grid--main-side" style="grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)">
+  <div class="stack" style="gap:20px">
+    {% if mode == "create" %}
+    <section class="card">
+      <div class="card__head"><div><h2>1 · Student details</h2><p>Must match the school records</p></div><span class="chip-icon">{% icon "users" %}</span></div>
+      <form class="card__body stack" id="student-form" novalidate autocomplete="off">
+        {% include "attendance/_field.html" with field=form.student_id %}
+        <div class="form-grid">
+          {% include "attendance/_field.html" with field=form.first_name %}
+          {% include "attendance/_field.html" with field=form.last_name %}
+          {% include "attendance/_field.html" with field=form.middle_name %}
+          <div class="field" data-field="section">
+            <label for="id_section">Section<span class="req">*</span></label>
+            <div class="row" style="gap:8px">{{ form.section }}<button class="btn btn--icon" type="button" data-open-dialog="#section-dialog" title="New section" aria-label="New section" id="btn-new-section">{% icon "plus" %}</button></div>
+            <ul class="errorlist"></ul>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;padding-top:14px;border-top:1px solid var(--border-subtle)">
+          <label class="row small" style="gap:8px;font-weight:600;cursor:pointer">
+            <input type="checkbox" class="checkbox" id="create-account-toggle" onchange="document.getElementById('account-fields').style.display=this.checked?'grid':'none'">
+            Create student portal login account
+          </label>
+          <div id="account-fields" class="form-grid" style="margin-top:12px;display:none">
+            <div class="field">
+              <label for="acc_username">Portal Username</label>
+              <input class="input" type="text" id="acc_username" placeholder="Auto: student ID">
+            </div>
+            <div class="field">
+              <label for="acc_password">Initial Password</label>
+              <input class="input" type="password" id="acc_password" placeholder="e.g. student123">
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+    {% else %}
+    <section class="card profile-head">
+      <span class="avatar avatar--xl">{% if student.photo %}<img src="{{ student.photo.url }}" alt="">{% else %}{{ student.initials }}{% endif %}</span>
+      <div>
+        <h2>{{ student.full_name }}</h2>
+        <p class="muted mono">{{ student.student_id }} · {{ student.section }}</p>
+        <p class="small text-2" style="margin-top:8px">New captures <strong>replace</strong> the {{ student.face_samples.count }} existing sample{{ student.face_samples.count|pluralize }}. Use this when recognition gets unreliable (new glasses, haircut, etc.).</p>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card__head"><div><h2>Capture tips</h2><p>Better samples → fewer missed scans</p></div><span class="chip-icon chip-icon--present">{% icon "check-circle" %}</span></div>
+      <div class="card__body">
+        <ul class="tips">
+          <li>{% icon "check" 16 %}<span>Light the face from the front; avoid a bright window behind the student.</span></li>
+          <li>{% icon "check" 16 %}<span>Remove caps, masks and sunglasses. Regular glasses are fine.</span></li>
+          <li>{% icon "check" 16 %}<span>Follow the prompts — small head turns make recognition robust.</span></li>
+          <li>{% icon "check" 16 %}<span>Only the student being registered should be in frame.</span></li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card__head">
+      <div><h2>{% if mode == "create" %}2 · {% endif %}Face samples</h2><p>Capture 4 angles (front, slightly left, slightly right, front). Auto-capture takes each pose automatically.</p></div>
+      <label class="row small" style="gap:8px;font-weight:600"><input type="checkbox" class="checkbox" id="auto-capture" checked> Auto-capture</label>
+    </div>
+    <div class="card__body stack">
+      <div class="capture" id="capture" data-quality="">
+        <video id="register-video" autoplay muted playsinline></video>
+        <canvas id="register-overlay"></canvas>
+        <div class="capture__mask"></div>
+        <div class="capture__oval"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><ellipse cx="50" cy="50" rx="49" ry="49" vector-effect="non-scaling-stroke"/></svg></div>
+        <span class="glass capture__count" id="capture-count">0 / {{ max_samples }}</span>
+        <span class="glass capture__prompt" id="capture-prompt">Start the camera to begin</span>
+        <div class="capture__shutter" id="capture-shutter"></div>
+        <div class="stage__loader" id="register-loader">
+          <div>
+            <div class="empty__icon" style="margin:0 auto 14px;background:rgba(255,255,255,.1);color:#fff">{% icon "camera" 28 %}</div>
+            <h3 id="register-loader-title">Camera is off</h3>
+            <p id="register-loader-text">Models load once, then the webcam starts.</p>
+            <div class="loader-bar"><span id="register-loader-bar"></span></div>
+            <button class="btn btn--primary" type="button" id="btn-start-camera" style="margin-top:18px">{% icon "play" 16 %} Start camera</button>
+          </div>
+        </div>
+      </div>
+
+      <ol class="steps" id="capture-steps" aria-label="Capture progress">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+      </ol>
+
+      <div class="row row--between row--wrap">
+        <div class="row">
+          <button class="btn" type="button" id="btn-capture" disabled>{% icon "camera" 16 %} Capture now</button>
+          <button class="btn btn--ghost" type="button" id="btn-reset" disabled>{% icon "refresh" 16 %} Reset</button>
+        </div>
+        <span class="small muted" id="capture-hint">4 samples required</span>
+      </div>
+
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+    <div class="card__foot">
+      <a class="btn btn--ghost" href="{% if cancel_url %}{{ cancel_url }}{% elif student %}{{ student.get_absolute_url }}{% else %}{% url 'attendance:student_list' %}{% endif %}">Cancel</a>
+      <button class="btn btn--primary btn--lg" type="button" id="btn-submit" disabled>
+        {% icon "user-check" 18 %} {% if mode == "reenroll" %}Save new face samples{% else %}Register student{% endif %}
+      </button>
+    </div>
+  </section>
+</div>
+
+{% if mode == "create" %}{% include "attendance/_section_dialog.html" %}{% endif %}
+{{ register_config|json_script:"register-config" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ SCANSYNC.FACE_API_JS }}" defer></script>
+<script src="{% static 'js/face-engine.js' %}" defer></script>
+<script src="{% static 'js/register.js' %}?v=4" defer></script>
+{% endblock %}

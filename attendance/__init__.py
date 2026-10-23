@@ -1,0 +1,1 @@
+"""ScanSync attendance app."""

@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% load scansync humanize %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+
+{% block content %}
+<section class="hero-banner">
+  <div>
+    <h2>Good {% now "H" as hour %}{% if hour < "12" %}morning{% elif hour < "18" %}afternoon{% else %}evening{% endif %}, {{ user.first_name|default:user.username }} 👋</h2>
+    <p>
+      {% if todays_classes %}You have {{ todays_classes|length }} class{{ todays_classes|length|pluralize:"es" }} scheduled today.
+      {% else %}No classes are scheduled for today.{% endif %}
+      {% if open_sessions %}<strong>{{ open_sessions|length }}</strong> session{{ open_sessions|length|pluralize }} still accepting scans.{% endif %}
+    </p>
+  </div>
+  <div class="row row--wrap">
+    <button class="btn btn--soft" type="button" data-open-dialog="#enroll-dialog" id="hero-enroll">{% icon "users" %} Add students to class</button>
+    <a class="btn btn--soft" id="hero-register" href="{% url 'attendance:student_register' %}">{% icon "user-plus" %} Register student</a>
+    <a class="btn btn--primary btn--lg" id="hero-scan" href="{% url 'attendance:scanner_select' %}">{% icon "scan-face" 20 %} Start scanning</a>
+  </div>
+</section>
+
+{% with arrived=kpi.present|add:kpi.late %}
+{% with recorded=arrived|add:kpi.absent %}
+<section class="grid grid--4" style="margin-bottom:24px" aria-label="Today's numbers">
+  <div class="card kpi kpi--hero">
+    <div class="kpi__top"><span class="kpi__label">Attendance rate today</span><span class="chip-icon">{% icon "trending" %}</span></div>
+    <div class="kpi__value">{{ arrived|pct_of:recorded }}%</div>
+    <div class="kpi__meta">{{ arrived }} of {{ recorded }} recorded arrivals</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi__top"><span class="kpi__label">Present</span><span class="chip-icon chip-icon--present">{% icon "check-circle" %}</span></div>
+    <div class="kpi__value">{{ kpi.present }}</div>
+    <div class="kpi__meta">On time, within grace period</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi__top"><span class="kpi__label">Late</span><span class="chip-icon chip-icon--late">{% icon "clock" %}</span></div>
+    <div class="kpi__value">{{ kpi.late }}</div>
+    <div class="kpi__meta">After the grace period</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi__top"><span class="kpi__label">Absent</span><span class="chip-icon chip-icon--absent">{% icon "x-circle" %}</span></div>
+    <div class="kpi__value">{{ kpi.absent }}</div>
+    <div class="kpi__meta">{{ kpi_students|intcomma }} active students · {{ kpi_classes }} classes</div>
+  </div>
+</section>
+{% endwith %}
+{% endwith %}
+
+<div class="grid grid--main-side">
+  <div class="stack" style="gap:20px">
+    <section class="card">
+      <div class="card__head">
+        <div><h2>Today's classes</h2><p>{{ today|date:"l, F j" }}</p></div>
+        <a class="btn btn--sm" href="{% url 'attendance:class_list' %}" id="dash-all-classes">All classes {% icon "chevron-right" 14 %}</a>
+      </div>
+      <div class="card__body--flush">
+        {% for item in todays_classes %}
+        <div class="class-row">
+          <div class="class-time">{{ item.cls.start_time|time:"g:i" }}<small>{{ item.cls.start_time|time:"A" }}</small></div>
+          <div class="grow" style="min-width:0">
+            <div class="row" style="gap:8px">
+              <strong>{{ item.cls.code }}</strong>
+              <span class="muted">·</span>
+              <span class="text-2">{{ item.cls.name }}</span>
+            </div>
+            <div class="small muted">{{ item.cls.section }}{% if item.cls.room %} · {{ item.cls.room }}{% endif %} · {{ item.cls.grace_period_minutes }} min grace</div>
+            {% if item.counts %}
+            <div class="progress" style="margin-top:10px;max-width:360px" title="{{ item.counts.present }} present · {{ item.counts.late }} late · {{ item.counts.absent }} absent of {{ item.counts.roster }}">
+              <span class="is-present" style="width:{{ item.counts.present|pct_of:item.counts.roster }}%"></span>
+              <span class="is-late" style="width:{{ item.counts.late|pct_of:item.counts.roster }}%"></span>
+              <span class="is-absent" style="width:{{ item.counts.absent|pct_of:item.counts.roster }}%"></span>
+            </div>
+            {% endif %}
+          </div>
+          <div class="row" style="gap:6px">
+            <button class="btn btn--ghost btn--sm" type="button" data-open-dialog="#enroll-dialog" data-class-id="{{ item.cls.pk }}" title="Add students to {{ item.cls.code }}">
+              {% icon "user-plus" 14 %} <span class="hide-sm">Students</span>
+            </button>
+            {% if item.session %}
+              {% if item.session.is_open %}
+                <span class="badge badge--live"><i class="dot"></i>Live</span>
+                <a class="btn btn--primary btn--sm" href="{% url 'attendance:scanner' item.session.pk %}">{% icon "camera" 14 %} Resume</a>
+              {% else %}
+                <span class="badge badge--present">{{ item.counts.rate }}%</span>
+                <a class="btn btn--sm" href="{% url 'attendance:session_detail' item.session.pk %}">View</a>
+              {% endif %}
+            {% else %}
+              <form method="post" action="{% url 'attendance:session_start' %}">
+                {% csrf_token %}
+                <input type="hidden" name="school_class" value="{{ item.cls.pk }}">
+                <button class="btn btn--soft btn--sm" type="submit">{% icon "play" 14 %} Start</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty">
+          <div class="empty__icon">{% icon "calendar" 28 %}</div>
+          <h3>Nothing on the schedule</h3>
+          <p>Create a class and set its meeting days to see it here.</p>
+          <a class="btn btn--primary" href="{% url 'attendance:class_create' %}">{% icon "plus" %} New class</a>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card__head">
+        <div><h2>7-day attendance trend</h2><p>Arrivals (present + late) as a share of recorded students</p></div>
+        <div class="legend"><span><i style="background:var(--brand-500)"></i>Present</span><span><i style="background:var(--late)"></i>Late</span></div>
+      </div>
+      <div class="card__body">
+        <div class="trend">
+          {% for d in trend %}
+          <div class="trend__col {% if d.date == today %}is-today{% endif %}" title="{{ d.date|date:'D, M j' }} — {{ d.rate }}% ({{ d.total }} records)">
+            <span class="trend__value">{% if d.total %}{{ d.rate }}%{% else %}<span class="muted">—</span>{% endif %}</span>
+            <div class="trend__bar">
+              <div class="trend__fill" style="height:{{ d.rate }}%;animation-delay:{{ forloop.counter0 }}00ms">
+                {% if d.late_pct %}<span class="late" style="height:{% widthratio d.late_pct d.rate 100 %}%"></span>{% endif %}
+              </div>
+            </div>
+            <span class="trend__label">{% if d.date == today %}Today{% else %}{{ d.date|date:"D" }}{% endif %}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="stack" style="gap:20px">
+    {% if open_sessions %}
+    <section class="card">
+      <div class="card__head"><div><h2>Live sessions</h2><p>Still accepting scans</p></div><span class="badge badge--live"><i class="dot"></i>{{ open_sessions|length }}</span></div>
+      <ul class="feed">
+        {% for s in open_sessions %}
+        <li>
+          <span class="chip-icon">{% icon "scan-face" %}</span>
+          <div class="grow"><div class="person__name">{{ s.school_class.label }}</div><div class="person__meta">{{ s.date|date:"M j" }} · opened {{ s.opened_at|time:"g:i A" }}</div></div>
+          <a class="btn btn--sm btn--soft" href="{% url 'attendance:scanner' s.pk %}">Open</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card__head"><div><h2>Recent check-ins</h2><p>Latest scans today</p></div></div>
+      {% if recent %}
+      <ul class="feed">
+        {% for r in recent %}
+        <li>
+          <a class="person grow" href="{{ r.student.get_absolute_url }}">
+            <span class="avatar avatar--sm">{% if r.student.photo %}<img src="{{ r.student.photo.url }}" alt="">{% else %}{{ r.student.initials }}{% endif %}</span>
+            <span style="min-width:0"><span class="person__name">{{ r.student.full_name }}</span><br><span class="person__meta">{{ r.session.school_class.code }} · {% status_badge r.status r.get_status_display %}</span></span>
+          </a>
+          <time datetime="{{ r.time_in|date:'c' }}">{{ r.time_in|time:"g:i A" }}</time>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty"><div class="empty__icon">{% icon "user-check" 28 %}</div><h3>No scans yet today</h3><p class="small">Check-ins appear here as students scan in.</p></div>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+
+{% include "attendance/_enroll_dialog.html" %}
+{% endblock %}

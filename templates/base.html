@@ -1,0 +1,139 @@
+{% load static scansync %}<!doctype html>
+<html lang="en" data-face-model-url="{{ SCANSYNC.FACE_MODEL_URL }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} · ScanSync</title>
+  <meta name="description" content="{% block description %}ScanSync is a facial-recognition attendance tracker for classrooms — scan in, auto-tag Present, Late or Absent, and export reports.{% endblock %}">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="theme-color" content="#5b5ff4">
+  <script>
+    try { document.documentElement.dataset.theme = localStorage.getItem("scansync-theme") ||
+      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch (e) {}
+  </script>
+  <link rel="icon" type="image/svg+xml" href="{% static 'img/logo.svg' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
+  <link rel="stylesheet" href="{% static 'css/scansync.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% block body %}
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <a class="brand" href="{% url 'attendance:dashboard' %}">
+      <img class="brand__mark" src="{% static 'img/logo.svg' %}" alt="" width="38" height="38">
+      <div>
+        <div class="brand__name">Scan<span>Sync</span></div>
+        <div class="brand__sub">Face attendance</div>
+      </div>
+    </a>
+
+    {% if is_student %}
+    <a class="btn btn--primary nav__cta" id="nav-student-dashboard" href="{% url 'attendance:student_classes' %}">
+      {% icon "scan-face" 18 %} My Classes &amp; Scan
+    </a>
+
+    <nav>
+      <div class="nav__label">Student Portal</div>
+      <a class="nav__item {% if nav == 'dashboard' %}is-active{% endif %}" id="nav-dashboard" href="{% url 'attendance:dashboard' %}">
+        {% icon "dashboard" %} My Dashboard
+      </a>
+      <a class="nav__item {% if 'class' in nav %}is-active{% endif %}" id="nav-student-classes" href="{% url 'attendance:student_classes' %}">
+        {% icon "book" %} My Classes
+      </a>
+      {% if student_profile %}
+      <a class="nav__item {% if 'reenroll' in nav or 'faces' in nav %}is-active{% endif %}" id="nav-student-faces" href="{% url 'attendance:student_reenroll' student_profile.pk %}">
+        {% icon "camera" %} Face Profile
+        {% if student_profile.face_samples.count < 4 %}<span class="pill" title="Needs face enrollment">!</span>{% endif %}
+      </a>
+      {% endif %}
+    </nav>
+    {% else %}
+    <a class="btn btn--primary nav__cta" id="nav-start-scanning" href="{% url 'attendance:scanner_select' %}">
+      {% icon "scan-face" 18 %} Start scanning
+    </a>
+
+    <nav>
+      <div class="nav__label">Overview</div>
+      <a class="nav__item {% if nav == 'dashboard' %}is-active{% endif %}" id="nav-dashboard" href="{% url 'attendance:dashboard' %}">
+        {% icon "dashboard" %} Dashboard
+      </a>
+      <a class="nav__item {% if 'scanner' in nav or 'session' in nav %}is-active{% endif %}" id="nav-scanner" href="{% url 'attendance:scanner_select' %}">
+        {% icon "camera" %} Live scanner
+        {% if open_session_count %}<span class="pill" title="Open sessions">{{ open_session_count }}</span>{% endif %}
+      </a>
+
+      <div class="nav__label">Manage</div>
+      <a class="nav__item {% if 'student' in nav or 'section' in nav %}is-active{% endif %}" id="nav-students" href="{% url 'attendance:student_list' %}">
+        {% icon "users" %} Students
+      </a>
+      <a class="nav__item {% if 'class' in nav %}is-active{% endif %}" id="nav-classes" href="{% url 'attendance:class_list' %}">
+        {% icon "book" %} Classes
+      </a>
+      <a class="nav__item {% if 'report' in nav %}is-active{% endif %}" id="nav-reports" href="{% url 'attendance:reports' %}">
+        {% icon "chart" %} Reports
+      </a>
+    </nav>
+    {% endif %}
+
+    <div class="sidebar__foot">
+      <div class="user-card">
+        <span class="avatar avatar--sm">
+          {% if is_student and student_profile and student_profile.photo %}
+            <img src="{{ student_profile.photo.url }}" alt="">
+          {% else %}
+            {{ user.first_name|default:user.username|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}
+          {% endif %}
+        </span>
+        <div class="grow" style="min-width:0">
+          <div class="user-card__name">{{ user.get_full_name|default:user.username }}</div>
+          <div class="user-card__role">{% if is_student %}Student · {{ student_profile.section }}{% elif user.is_staff %}Administrator{% else %}Teacher{% endif %}</div>
+        </div>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="btn btn--ghost btn--icon btn--sm" id="logout-button" type="submit" title="Sign out" aria-label="Sign out">{% icon "logout" 16 %}</button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn--icon menu-btn" type="button" data-nav-toggle aria-label="Open navigation" id="menu-button">{% icon "menu" %}</button>
+      <div class="topbar__title">
+        <div class="crumbs">{% block crumbs %}<span>{{ today|date:"l, F j, Y" }}</span>{% endblock %}</div>
+        <h1>{% block heading %}{% endblock %}</h1>
+      </div>
+      <div class="topbar__actions">
+        {% block topbar_actions %}{% endblock %}
+        <span class="clock" title="Current time"><i class="live-dot"></i><span data-clock>--:--:--</span></span>
+        <button class="btn btn--icon" type="button" data-theme-toggle id="theme-toggle" aria-label="Toggle dark mode" title="Toggle theme">
+          <span data-theme-icon="light">{% icon "moon" %}</span>
+          <span data-theme-icon="dark" hidden>{% icon "sun" %}</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      {% if messages %}
+      <div class="messages" role="status">
+        {% for message in messages %}
+        <div class="alert alert--{% if message.tags == 'debug' %}info{% else %}{{ message.tags }}{% endif %}">
+          {% if message.tags == 'success' %}{% icon "check-circle" %}{% elif message.tags == 'error' %}{% icon "x-circle" %}{% elif message.tags == 'warning' %}{% icon "alert" %}{% else %}{% icon "info" %}{% endif %}
+          <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
+<div class="toasts" aria-live="polite"></div>
+<script src="{% static 'js/app.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

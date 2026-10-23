@@ -1,0 +1,22 @@
+{% load scansync %}
+<dialog class="modal" id="section-dialog" aria-labelledby="section-dialog-title">
+  <form method="post" action="{% url 'attendance:section_create' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <div class="card__head">
+      <div><h2 id="section-dialog-title">New section</h2><p>A block of students, e.g. BSIS 2-A</p></div>
+      <button class="btn btn--ghost btn--icon btn--sm" type="button" data-close-dialog aria-label="Close">{% icon "x" 16 %}</button>
+    </div>
+    <div class="card__body stack">
+      {% include "attendance/_field.html" with field=section_form.name %}
+      <div class="form-grid">
+        {% include "attendance/_field.html" with field=section_form.program %}
+        {% include "attendance/_field.html" with field=section_form.year_level %}
+      </div>
+    </div>
+    <div class="card__foot">
+      <button class="btn btn--ghost" type="button" data-close-dialog>Cancel</button>
+      <button class="btn btn--primary" type="submit" id="section-dialog-submit">{% icon "plus" 16 %} Create section</button>
+    </div>
+  </form>
+</dialog>

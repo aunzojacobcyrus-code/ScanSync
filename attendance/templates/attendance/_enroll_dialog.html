@@ -1,0 +1,127 @@
+{% load scansync %}
+<dialog class="modal" id="enroll-dialog" aria-labelledby="enroll-dialog-title" style="max-width:540px;width:95%">
+  <form method="post" action="{% url 'attendance:class_enroll_students' %}" id="enroll-form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    
+    <div class="card__head">
+      <div>
+        <h2 id="enroll-dialog-title">Add students to class</h2>
+        <p>Enroll students so this subject appears in their student portal</p>
+      </div>
+      <button class="btn btn--ghost btn--icon btn--sm" type="button" data-close-dialog aria-label="Close">{% icon "x" 16 %}</button>
+    </div>
+
+    <div class="card__body stack" style="gap:16px">
+      <div class="field">
+        <label for="enroll-class-select">Select class <span class="req">*</span></label>
+        <select name="school_class" id="enroll-class-select" class="select" required>
+          {% for c in all_classes %}
+            <option value="{{ c.pk }}">{{ c.code }} · {{ c.name }} ({{ c.section }})</option>
+          {% empty %}
+            <option value="" disabled>No active classes available</option>
+          {% endfor %}
+        </select>
+        <span class="small muted">The class you want to enroll students into.</span>
+      </div>
+
+      <div class="stack" style="gap:8px">
+        <div class="row row--between" style="align-items:center">
+          <label class="label" style="margin-bottom:0">Select student(s) to add <span class="req">*</span></label>
+          <div class="row" style="gap:6px">
+            <button type="button" class="btn btn--ghost btn--sm" id="enroll-select-all" style="padding:2px 8px;font-size:12px">Select all</button>
+            <button type="button" class="btn btn--ghost btn--sm" id="enroll-clear-all" style="padding:2px 8px;font-size:12px">Clear</button>
+          </div>
+        </div>
+
+        <input type="text" class="input input--sm" id="enroll-student-search" placeholder="Type student name or ID to filter…" autocomplete="off">
+
+        <div id="enroll-student-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:6px;display:flex;flex-direction:column;gap:4px;background:var(--surface)">
+          {% for s in all_students %}
+          <label class="row enroll-student-item" style="gap:10px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;align-items:center" data-text="{{ s.full_name|lower }} {{ s.student_id|lower }} {{ s.section|lower }}">
+            <input type="checkbox" name="student_ids" value="{{ s.pk }}" class="checkbox enroll-student-cb">
+            <span class="avatar avatar--sm" style="flex-shrink:0">{% if s.photo %}<img src="{{ s.photo.url }}" alt="">{% else %}{{ s.initials }}{% endif %}</span>
+            <div class="grow" style="min-width:0">
+              <div class="person__name" style="font-size:14px">{{ s.full_name }}</div>
+              <div class="small muted mono">{{ s.student_id }} · Section {{ s.section }}</div>
+            </div>
+            {% if s.user %}<span class="badge badge--soft" title="Has portal login">{% icon "user-check" 12 %}</span>{% endif %}
+          </label>
+          {% empty %}
+          <p class="small muted" style="padding:16px;text-align:center">No active students registered yet.</p>
+          {% endfor %}
+        </div>
+        <span class="small muted" id="enroll-selected-count">0 students selected</span>
+      </div>
+
+      <div class="alert alert--info" style="font-size:13px;line-height:1.4">
+        {% icon "check-circle" 16 %}
+        <div>
+          Enrolled students will instantly see this class in their <strong>Student Dashboard</strong> and will be eligible to scan their attendance.
+        </div>
+      </div>
+    </div>
+
+    <div class="card__foot">
+      <button class="btn btn--ghost" type="button" data-close-dialog>Cancel</button>
+      <button class="btn btn--primary" type="submit" id="enroll-dialog-submit">{% icon "user-plus" 16 %} Add students</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  (() => {
+    const search = document.getElementById("enroll-student-search");
+    const items = document.querySelectorAll(".enroll-student-item");
+    const countEl = document.getElementById("enroll-selected-count");
+    const selectAllBtn = document.getElementById("enroll-select-all");
+    const clearAllBtn = document.getElementById("enroll-clear-all");
+
+    function updateCount() {
+      const checked = document.querySelectorAll(".enroll-student-cb:checked").length;
+      if (countEl) countEl.textContent = `${checked} student${checked === 1 ? "" : "s"} selected`;
+    }
+
+    if (search) {
+      search.addEventListener("input", () => {
+        const q = search.value.toLowerCase().trim();
+        items.forEach((item) => {
+          const text = item.getAttribute("data-text") || "";
+          item.style.display = !q || text.includes(q) ? "flex" : "none";
+        });
+      });
+    }
+
+    document.querySelectorAll(".enroll-student-cb").forEach((cb) => {
+      cb.addEventListener("change", updateCount);
+    });
+
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener("click", () => {
+        items.forEach((item) => {
+          if (item.style.display !== "none") {
+            const cb = item.querySelector(".enroll-student-cb");
+            if (cb) cb.checked = true;
+          }
+        });
+        updateCount();
+      });
+    }
+
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener("click", () => {
+        document.querySelectorAll(".enroll-student-cb").forEach((cb) => (cb.checked = false));
+        updateCount();
+      });
+    }
+
+    // When an opener with data-class-id is clicked, pre-select that class
+    document.addEventListener("click", (e) => {
+      const opener = e.target.closest("[data-open-dialog='#enroll-dialog']");
+      if (opener && opener.dataset.classId) {
+        const sel = document.getElementById("enroll-class-select");
+        if (sel) sel.value = opener.dataset.classId;
+      }
+    });
+  })();
+</script>

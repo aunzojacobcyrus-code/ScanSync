@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load static scansync %}
+{% block title %}Scan In · {{ session.school_class.code }}{% endblock %}
+{% block heading %}Student Self-Scan{% endblock %}
+{% block crumbs %}<a href="{% url 'attendance:dashboard' %}">Dashboard</a>{% icon "chevron-right" 12 %}<span>{{ session.school_class.code }} · {{ session.school_class.name }}</span>{% endblock %}
+
+{% block content %}
+<div class="scanner" id="scanner" style="max-width:960px;margin:0 auto">
+  <div class="stack">
+    <!-- Camera Viewport Stage -->
+    <div class="stage" id="stage" data-state="loading" style="aspect-ratio:16/10">
+      <video id="scanner-video" autoplay muted playsinline></video>
+      <canvas class="overlay" id="scanner-overlay"></canvas>
+      <div class="stage__vignette"></div>
+      <div class="flash" id="scanner-flash"></div>
+      <div class="stage__frame"><i></i><i></i><i></i><i></i><div class="stage__scanline"></div></div>
+
+      <div class="stage__hud">
+        <span class="glass hud-pill" id="hud-status" data-tone=""><i class="dot"></i><span>Initializing camera…</span></span>
+        <div class="hud-tools">
+          <a class="btn btn--sm" href="{% url 'attendance:dashboard' %}" title="Back to dashboard">{% icon "arrow-left" 14 %} Back</a>
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div class="stage__loader" id="stage-loader">
+        <div>
+          <div class="spinner" id="loader-spinner"></div>
+          <h3 id="loader-title">Preparing camera</h3>
+          <p id="loader-text">Loading recognition models…</p>
+          <div class="loader-bar"><span id="loader-bar"></span></div>
+          <button class="btn btn--sm hidden" type="button" id="loader-retry" style="margin-top:18px">{% icon "refresh" 14 %} Try again</button>
+        </div>
+      </div>
+
+      <!-- Result Confirmation Modal over video -->
+      <div class="result" id="result" aria-live="assertive">
+        <span class="avatar" id="result-avatar">
+          {% if student.photo %}<img src="{{ student.photo.url }}" alt="">{% else %}{{ student.initials }}{% endif %}
+        </span>
+        <div style="min-width:0">
+          <div class="result__name" id="result-name">{{ student.full_name }}</div>
+          <div class="result__meta" id="result-meta">{{ student.student_id }} · {{ student.section }}</div>
+          <div class="result__msg" id="result-msg">Identifying…</div>
+        </div>
+        <div class="result__time">
+          <strong id="result-time"></strong>
+          <span class="badge" id="result-badge">Present</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student and Class Context Card -->
+    <div class="card">
+      <div class="card__body row row--between row--wrap" style="padding:16px 22px">
+        <div class="row" style="gap:14px">
+          <span class="avatar avatar--sm">
+            {% if student.photo %}<img src="{{ student.photo.url }}" alt="">{% else %}{{ student.initials }}{% endif %}
+          </span>
+          <div>
+            <strong>{{ student.full_name }}</strong> <span class="small muted mono">({{ student.student_id }})</span>
+            <div class="small text-2">{{ session.school_class.code }} – {{ session.school_class.name }} · {{ session.school_class.section }}</div>
+          </div>
+        </div>
+
+        <div class="row" style="gap:10px">
+          <div class="small text-2" style="text-align:right">
+            <div>Class starts: <strong>{{ session.start_time|time:"g:i A" }}</strong></div>
+            <div class="muted">Grace deadline: <strong>{{ session.grace_deadline|time:"g:i A" }}</strong></div>
+          </div>
+          <a class="btn btn--ghost" href="{% url 'attendance:dashboard' %}">Cancel</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ scanner_config|json_script:"student-scanner-config" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ SCANSYNC.FACE_API_JS }}" defer></script>
+<script src="{% static 'js/face-engine.js' %}" defer></script>
+<script src="{% static 'js/student-scanner.js' %}?v=1" defer></script>
+{% endblock %}

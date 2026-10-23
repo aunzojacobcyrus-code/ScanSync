@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load scansync %}
+{% block title %}Classes{% endblock %}
+{% block heading %}Classes{% endblock %}
+{% block crumbs %}<span>{{ classes|length }} class{{ classes|length|pluralize:"es" }}{% if not user.is_staff %} you handle{% endif %}</span>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Subjects &amp; schedules</h2>
+    <p>Each class sets the start time, grace period and optional absent cut-off used to tag arrivals automatically.</p>
+  </div>
+  <div class="row">
+    <button class="btn" type="button" data-open-dialog="#section-dialog" id="btn-new-section">{% icon "plus" 16 %} Section</button>
+    <a class="btn btn--primary" href="{% url 'attendance:class_create' %}" id="btn-new-class">{% icon "plus" 16 %} New class</a>
+  </div>
+</div>
+
+{% if classes %}
+<div class="grid grid--3">
+  {% for c in classes %}
+  <article class="card card--hover class-card" {% if not c.is_active %}style="opacity:.6"{% endif %}>
+    <div class="row row--between">
+      <span class="class-card__code">{{ c.code }}</span>
+      {% if c.is_active %}{% weekday_chips c.days_list %}{% else %}<span class="badge">Inactive</span>{% endif %}
+    </div>
+    <div>
+      <h3 style="font-size:17px">{{ c.name }}</h3>
+      <p class="small muted" style="margin-top:4px">
+        {% icon "users" 13 %} {{ c.section }} · {{ c.roster_count }} student{{ c.roster_count|pluralize }}
+        {% if c.room %} · {% icon "pin" 13 %} {{ c.room }}{% endif %}
+      </p>
+      <p class="small muted">{% icon "user-check" 13 %} {{ c.teacher_name|default:"No teacher assigned" }}</p>
+    </div>
+    <div class="class-card__rules">
+      <div><small>Time</small><strong>{{ c.start_time|time:"g:i A" }}{% if c.end_time %}<span class="muted small"> – {{ c.end_time|time:"g:i" }}</span>{% endif %}</strong></div>
+      <div><small>Grace</small><strong>{{ c.grace_period_minutes }} min</strong></div>
+      <div><small>Absent after</small><strong>{% if c.absent_after_minutes is not None %}{{ c.absent_after_minutes }} min{% else %}—{% endif %}</strong></div>
+    </div>
+    <div class="row row--between">
+      <span class="small muted">{{ c.session_count }} session{{ c.session_count|pluralize }}</span>
+      <div class="row" style="gap:6px">
+        <a class="btn btn--sm btn--ghost" href="{% url 'attendance:reports' %}?school_class={{ c.pk }}" title="Reports">{% icon "chart" 14 %}</a>
+        <a class="btn btn--sm" href="{% url 'attendance:class_edit' c.pk %}" id="edit-class-{{ c.pk }}">{% icon "edit" 14 %} Edit</a>
+        {% if c.is_active %}
+        <form method="post" action="{% url 'attendance:session_start' %}">
+          {% csrf_token %}<input type="hidden" name="school_class" value="{{ c.pk }}">
+          <button class="btn btn--sm btn--primary" type="submit" id="scan-class-{{ c.pk }}">{% icon "scan-face" 14 %} Scan</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty">
+    <div class="empty__icon">{% icon "book" 28 %}</div>
+    <h3>No classes yet</h3>
+    <p>Create a class for each subject you handle — e.g. <em>IS 103 · Logic Formulation</em> for <em>BSIS 2-A</em>.</p>
+    <a class="btn btn--primary" href="{% url 'attendance:class_create' %}">{% icon "plus" 16 %} Create a class</a>
+  </div>
+</div>
+{% endif %}
+
+{% include "attendance/_section_dialog.html" %}
+{% endblock %}
